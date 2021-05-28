@@ -1,17 +1,17 @@
 package main
 
 import (
+	"LPProject/nhlApi"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"sync"
 	"time"
-
-	"youtubenhlproject/nhlApi"
 )
 
 func main() {
-	// help benchmarking the request time
+	// ajudar a comparar o tempo de solicitação
 	now := time.Now()
 
 	rosterFile, err := os.OpenFile("rosters.txt", os.O_RDWR|os.O_CREATE, 0666)
@@ -24,16 +24,16 @@ func main() {
 
 	log.SetOutput(wrt)
 
+	var wg sync.WaitGroup
+
 	teams, err := nhlApi.GetAllTeams()
 	if err != nil {
 		log.Fatalf("error while getting all teams: %v", err)
 	}
 
-	var wg sync.WaitGroup
-
 	wg.Add(len(teams))
 
-	// unbuffered channel
+	// canal sem buffer
 	results := make(chan []nhlApi.Roster)
 
 	for _, team := range teams {
@@ -42,11 +42,10 @@ func main() {
 			if err != nil {
 				log.Fatalf("error getting roster: %v", err)
 			}
-
 			results <- roster
-
 			wg.Done()
 		}(team)
+
 	}
 
 	go func() {
@@ -56,18 +55,25 @@ func main() {
 
 	display(results)
 
-	log.Printf("took %v", time.Now().Sub(now).String())
+	log.Printf("took %v", time.Since(now).String())
 }
 
 func display(results chan []nhlApi.Roster) {
+	var entrada string
+	fmt.Println("POSIÇÕES EXISTENTES:")
+	fmt.Println("[D,C,G,RW,LW]")
+	fmt.Println("ESCOLHA A POSIÇÃO DO JOGADOR:")
+	fmt.Scan(&entrada)
 	for r := range results {
-		for _, ros := range r {
-			log.Println("----------------------")
-			log.Printf("ID: %d\n", ros.Person.ID)
-			log.Printf("Name: %s\n", ros.Person.FullName)
-			log.Printf("Position: %s\n", ros.Position.Abbreviation)
-			log.Printf("Jersey: %s\n", ros.JerseyNumber)
-			log.Println("----------------------")
+		for _, x := range r {
+			if entrada == x.Position.Abbreviation {
+				log.Println("----------------------")
+				log.Printf("ID: %d\n", x.Person.ID)
+				log.Printf("Name: %s\n", x.Person.FullName)
+				log.Printf("Position: %s\n", x.Position.Abbreviation)
+				log.Printf("Jersey: %s\n", x.JerseyNumber)
+				log.Println("----------------------")
+			}
 		}
 	}
 }
